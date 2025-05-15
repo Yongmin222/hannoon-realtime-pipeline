@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -67,7 +69,7 @@ public class DuplicateDetectionWindowFunction
             ));
             
             // Set detection time
-            alert.setDetectionTime(LocalDateTime.now().format(TIME_FORMATTER));
+            alert.setDetectionTime(ZonedDateTime.now(ZoneId.of("Asia/Seoul")).format(TIME_FORMATTER));
             
             logger.info("Creating alert: {}", alert.getAlertMessage());
             
