@@ -13,7 +13,7 @@ public class ReceiptDataProducer {
 
     private final KafkaTemplate<String, ReceiptData> kafkaTemplate;
 
-    private static final String TOPIC_NAME = "test"; // 원하는 토픽명 고정
+    private static final String TOPIC_NAME = "test-topic"; // 원하는 토픽명 고정
 
     public void sendReceiptData(ReceiptData data) {
         kafkaTemplate.send(TOPIC_NAME, data);

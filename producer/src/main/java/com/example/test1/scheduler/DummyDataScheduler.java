@@ -18,10 +18,10 @@ public class DummyDataScheduler {
     private final ReceiptDataService receiptDataService;
     private final ReceiptDataProducer receiptDataProducer;
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 1000)
     public void produceDataFromExcel() {
-        String excelPath = "C:/Users/user/Desktop/kafka/Dummy_data.xlsx"; // 파일 경로
-        int generateCount = 50; // 생성할 랜덤 데이터 개수 (필요에 따라 조절)
+        String excelPath = "C:/Users/user/Desktop/kafka/test1/Dummy_data.xlsx"; // 파일 경로
+        int generateCount = 10000; // 생성할 랜덤 데이터 개수 (필요에 따라 조절)
 
         try {
             List<ReceiptData> dataList = receiptDataService.generateGroupedShuffledDataFromExcel(excelPath, generateCount);
