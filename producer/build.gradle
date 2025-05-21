@@ -1,0 +1,47 @@
+plugins {
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'java'
+    id 'com.github.davidmc24.gradle.plugin.avro' version '1.9.1'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://packages.confluent.io/maven/'
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'io.confluent:kafka-avro-serializer:7.5.1'
+    implementation 'org.apache.avro:avro:1.11.1'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testCompileOnly 'org.projectlombok:lombok:1.18.30'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.apache.poi:poi:5.2.3'
+    implementation 'org.apache.poi:poi-ooxml:5.2.3'
+}
+
+avro {
+    fieldVisibility = "PUBLIC"
+    stringType = "String"
+    // useLogicalTypes 옵션은 제거했습니다.
+}
+sourceSets {
+    main {
+        java {
+            // 기존 src/main/java 경로는 그대로 유지됨 (gradle 기본 동작)
+            // Avro 플러그인이 생성하는 코드가 위치할 기본 폴더를 추가
+            srcDirs += files("${buildDir}/generated-main-avro-java")
+        }
+    }
+}
