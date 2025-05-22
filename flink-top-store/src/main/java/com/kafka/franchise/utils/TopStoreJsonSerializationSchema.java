@@ -10,11 +10,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 상위 매장 랭킹 데이터를 JSON 형식으로 직렬화하는 스키마 클래스
+ * =======================================================
+ * 상위 매장 랭킹 데이터 JSON 직렬화 스키마 클래스
+ * =======================================================
  * 
- * Flink에서 생성된 TopStoreRankingData 객체를 JSON 형식으로 변환하여
- * 카프카 메시지로 출력합니다. 프랜차이즈 ID를 메시지 키로 사용하고,
- * 결과 데이터를 JSON 형식의 메시지 값으로 변환합니다.
+ * 📋 역할:
+ * - TopStoreRankingData 객체를 JSON 형식으로 변환
+ * - Kafka 메시지로 전송하기 위한 ProducerRecord 생성
+ * - 프랜차이즈 ID를 메시지 키로 사용하여 파티셔닝
+ * 
+ * 🔧 JSON 구조:
+ * {
+ *   "franchise_id": 123,
+ *   "timestamp": "2025-05-22 14:30:00",
+ *   "top_stores": [
+ *     {
+ *       "rank": 1,
+ *       "store_id": 456,
+ *       "store_name": "강남점",
+ *       "store_brand": "맥도날드",
+ *       "store_address": "서울시 강남구...",
+ *       "total_sales": 1500000
+ *     }
+ *   ]
+ * }
  */
 public class TopStoreJsonSerializationSchema implements KafkaRecordSerializationSchema<TopStoreRankingData> {
     private static final Logger LOG = LoggerFactory.getLogger(TopStoreJsonSerializationSchema.class);

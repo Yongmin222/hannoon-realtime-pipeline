@@ -1,6 +1,7 @@
 package com.kafka.franchise.functions;
 
 import com.kafka.franchise.model.ReceiptData;
+import com.kafka.franchise.utils.AppProperties;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,12 +24,12 @@ public class TodayReceiptFilter implements FilterFunction<ReceiptData> {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     
     /**
-     * 생성자에서 한국 시간대(KST) 설정
+     * 생성자에서 설정된 시간대 적용
      * SimpleDateFormat이 올바른 시간대로 날짜를 포맷팅하도록 합니다.
      */
     public TodayReceiptFilter() {
-        // 한국 시간대 설정(Asia/Seoul)
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        // AppProperties에서 설정된 시간대 사용
+        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone(AppProperties.getTimezone()));
     }
 
     /**

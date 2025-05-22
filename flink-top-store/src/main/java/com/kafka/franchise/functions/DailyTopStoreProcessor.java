@@ -2,6 +2,7 @@ package com.kafka.franchise.functions;
 
 import com.kafka.franchise.model.ReceiptData;
 import com.kafka.franchise.model.TopStoreRankingData;
+import com.kafka.franchise.utils.AppProperties;
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
@@ -33,17 +34,18 @@ public class DailyTopStoreProcessor extends KeyedProcessFunction<Integer, Receip
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     private static final SimpleDateFormat DATETIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     
-    // 상위 몇 개 매장을 추출할지 설정 (현재 상위 3개)
-    private static final int TOP_STORE_COUNT = 3;
+    // 상위 몇 개 매장을 추출할지 설정 (AppProperties에서 동적으로 가져옴)
+    private static final int TOP_STORE_COUNT = AppProperties.getTopStoreCount();
     
     /**
-     * 생성자에서 한국 시간대(KST) 설정
+     * 생성자에서 한국 시간대 설정
      * SimpleDateFormat이 올바른 시간대로 날짜를 포맷팅하도록 합니다.
      */
     public DailyTopStoreProcessor() {
-        // 한국 시간대 설정(Asia/Seoul)
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
-        DATETIME_FORMAT.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        // AppProperties에서 설정된 시간대 사용
+        TimeZone timeZone = TimeZone.getTimeZone(AppProperties.getTimezone());
+        DATE_FORMAT.setTimeZone(timeZone);
+        DATETIME_FORMAT.setTimeZone(timeZone);
     }
     
     // --- 상태(State) 변수 선언 ---
@@ -134,10 +136,10 @@ public class DailyTopStoreProcessor extends KeyedProcessFunction<Integer, Receip
      */
     @Override
     public void processElement(ReceiptData receipt, Context ctx, Collector<TopStoreRankingData> out) throws Exception {
-        // 현재 한국 시간 명시적으로 생성
-        TimeZone koreanTimeZone = TimeZone.getTimeZone("Asia/Seoul");
-        DATE_FORMAT.setTimeZone(koreanTimeZone);
-        DATETIME_FORMAT.setTimeZone(koreanTimeZone);
+        // AppProperties에서 설정된 시간대 명시적으로 사용
+        TimeZone timeZone = TimeZone.getTimeZone(AppProperties.getTimezone());
+        DATE_FORMAT.setTimeZone(timeZone);
+        DATETIME_FORMAT.setTimeZone(timeZone);
         
         // 영수증의 날짜 추출 (처음 10자리만 사용 - YYYY-MM-DD 형식)
         String receiptDate = receipt.getTime().substring(0, 10);
