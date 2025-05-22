@@ -18,13 +18,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Avro 형식의 데이터를 역직렬화하는 스키마 클래스
- *
- * 카프카에서 수신한 Avro 이진 데이터를 Java 객체로 변환합니다.
- * Confluent Schema Registry 와이어 포맷(Confluent Wire Format)을 
- * 지원하여 스키마 레지스트리를 통해 등록된 스키마로 직렬화된 데이터도 처리할 수 있습니다.
+ * =======================================================
+ * Avro 형식 데이터 역직렬화 스키마 클래스
+ * =======================================================
  * 
- * @param <T> 변환할 대상 객체 타입 (여기서는 ReceiptData)
+ * 📋 역할:
+ * - Kafka에서 수신한 Avro 이진 데이터를 Java 객체로 변환
+ * - Confluent Schema Registry 와이어 포맷 지원
+ * - 스키마 레지스트리 접근 불가 시에도 내장 스키마로 처리
+ * 
+ * 🔧 지원 기능:
+ * - 매직 바이트 및 스키마 ID 처리
+ * - GenericRecord → ReceiptData 변환
+ * - 에러 처리 및 로깅
+ * 
+ * @param <T> 변환할 대상 객체 타입 (주로 ReceiptData)
  */
 public class SimpleAvroDeserializationSchema<T> implements DeserializationSchema<T> {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleAvroDeserializationSchema.class);
