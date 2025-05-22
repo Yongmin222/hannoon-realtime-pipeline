@@ -1,4 +1,4 @@
-package com.example.test1.producer;
+package com.example.purchase.producer;
 
 import com.example.test1.entity.ReceiptData;
 import lombok.RequiredArgsConstructor;

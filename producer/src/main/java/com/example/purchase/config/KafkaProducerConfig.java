@@ -1,4 +1,4 @@
-package com.example.test1.config;
+package com.example.purchase.config;
 
 import com.example.test1.entity.ReceiptData;
 import org.springframework.beans.factory.annotation.Value;

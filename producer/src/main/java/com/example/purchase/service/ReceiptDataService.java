@@ -1,4 +1,4 @@
-package com.example.test1.service;
+package com.example.purchase.service;
 
 import com.example.test1.entity.MenuItem;
 import com.example.test1.entity.ReceiptData;

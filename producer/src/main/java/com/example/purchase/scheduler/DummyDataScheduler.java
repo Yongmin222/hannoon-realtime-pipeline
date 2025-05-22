@@ -1,8 +1,7 @@
-package com.example.test1.scheduler;
+package com.example.purchase.scheduler;
 
-import com.example.test1.entity.ReceiptData;
-import com.example.test1.producer.ReceiptDataProducer;
-import com.example.test1.service.ReceiptDataService;
+import com.example.purchase.producer.ReceiptDataProducer;
+import com.example.purchase.service.ReceiptDataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
