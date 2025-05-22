@@ -1,6 +1,6 @@
-package com.kafka.detector.utils;
+package com.kafka.duplicatedetector.utils;
 
-import com.kafka.detector.model.ReceiptData;
+import com.kafka.duplicatedetector.model.ReceiptData;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -17,16 +17,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Simple schema registry Avro deserialization
+ * =======================================================
+ * 단순 Avro 역직렬화 스키마 (Schema Registry 지원)
+ * =======================================================
+ * 
+ * 📋 기능:
+ * - Confluent Schema Registry 형식의 Avro 메시지를 ReceiptData로 변환
+ * - Magic byte와 Schema ID 처리
+ * - 영수증 데이터의 모든 필드 매핑
+ * 
+ * 🔧 메시지 형식:
+ * [Magic Byte(1)] + [Schema ID(4)] + [Avro Data(N)]
+ * 
+ * 💡 변환 과정:
+ * Kafka Message → Skip Header(5 bytes) → Avro Record → ReceiptData
  */
-public class SimpleSchemaRegistryAvroDeserializationSchema implements DeserializationSchema<ReceiptData> {
+public class SimpleAvroDeserializationSchema implements DeserializationSchema<ReceiptData> {
     
-    private static final Logger logger = LoggerFactory.getLogger(SimpleSchemaRegistryAvroDeserializationSchema.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleAvroDeserializationSchema.class);
     
-    // Magic byte and schema ID are at the beginning of Confluent Avro messages
+    // Confluent Schema Registry 메시지 형식 상수
     private static final byte MAGIC_BYTE = 0x0;
     private static final int SCHEMA_ID_SIZE = 4;
+    private static final int HEADER_SIZE = 1 + SCHEMA_ID_SIZE; // Magic byte + Schema ID
     
+    /**
+     * Avro 스키마 정의 (ReceiptData 구조)
+     */
     private static final String SCHEMA_STRING = """
         {
           "type": "record",
@@ -65,41 +82,65 @@ public class SimpleSchemaRegistryAvroDeserializationSchema implements Deserializ
         }
         """;
     
+    /**
+     * =======================================================
+     * Kafka 메시지를 ReceiptData 객체로 역직렬화
+     * =======================================================
+     * 
+     * @param message Kafka에서 받은 바이트 배열 메시지
+     * @return 변환된 ReceiptData 객체 (실패 시 null)
+     */
     @Override
     public ReceiptData deserialize(byte[] message) {
         if (message == null || message.length == 0) {
+            LOG.warn("Received null or empty message");
             return null;
         }
         
         try {
-            // Skip Confluent wire format bytes (1 magic byte + 4 schema ID bytes)
-            if (message.length < 5 || message[0] != MAGIC_BYTE) {
-                logger.error("Invalid Confluent Avro message format");
+            // 📝 Confluent 메시지 형식 검증
+            if (message.length < HEADER_SIZE || message[0] != MAGIC_BYTE) {
+                LOG.error("Invalid Confluent Avro message format. Expected magic byte: {}, got: {}", 
+                         MAGIC_BYTE, message.length > 0 ? message[0] : "empty");
                 return null;
             }
             
-            // Skip the magic byte and schema ID
-            ByteBuffer buffer = ByteBuffer.wrap(message, 1, 4);
+            // 📊 Schema ID 추출 (디버깅용)
+            ByteBuffer buffer = ByteBuffer.wrap(message, 1, SCHEMA_ID_SIZE);
             int schemaId = buffer.getInt();
-            logger.debug("Received message with schema ID: {}", schemaId);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Processing message with schema ID: {}, total size: {} bytes", 
+                         schemaId, message.length);
+            }
             
-            // Decode actual Avro data (after the 5-byte header)
+            // 🔄 Avro 데이터 디코딩 (헤더 5바이트 이후)
             Schema schema = new Schema.Parser().parse(SCHEMA_STRING);
             DatumReader<GenericRecord> reader = new GenericDatumReader<>(schema);
-            Decoder decoder = DecoderFactory.get().binaryDecoder(message, 5, message.length - 5, null);
+            Decoder decoder = DecoderFactory.get().binaryDecoder(
+                message, HEADER_SIZE, message.length - HEADER_SIZE, null);
             GenericRecord record = reader.read(null, decoder);
             
+            // 🏗️ ReceiptData 객체로 변환
             return convertToReceiptData(record);
             
         } catch (Exception e) {
-            logger.error("Failed to deserialize Avro message", e);
+            LOG.error("Failed to deserialize Avro message: {}", e.getMessage(), e);
             return null;
         }
     }
     
+    /**
+     * =======================================================
+     * GenericRecord를 ReceiptData 객체로 변환
+     * =======================================================
+     * 
+     * @param record Avro GenericRecord
+     * @return 변환된 ReceiptData 객체
+     */
     private ReceiptData convertToReceiptData(GenericRecord record) {
         ReceiptData receiptData = new ReceiptData();
         
+        // 🏪 매장 정보 매핑
         receiptData.setFranchiseId((Integer) record.get("franchise_id"));
         receiptData.setStoreBrand(record.get("store_brand").toString());
         receiptData.setStoreId((Integer) record.get("store_id"));
@@ -107,7 +148,7 @@ public class SimpleSchemaRegistryAvroDeserializationSchema implements Deserializ
         receiptData.setRegion(record.get("region").toString());
         receiptData.setStoreAddress(record.get("store_address").toString());
         
-        // Handle menu items
+        // 🍔 메뉴 아이템 리스트 처리
         @SuppressWarnings("unchecked")
         List<GenericRecord> menuItemRecords = (List<GenericRecord>) record.get("menu_items");
         List<ReceiptData.MenuItem> menuItems = new ArrayList<>();
@@ -124,6 +165,8 @@ public class SimpleSchemaRegistryAvroDeserializationSchema implements Deserializ
         }
         
         receiptData.setMenuItems(menuItems);
+        
+        // 💰 결제 및 사용자 정보 매핑
         receiptData.setTotalPrice((Integer) record.get("total_price"));
         receiptData.setUserId((Integer) record.get("user_id"));
         receiptData.setTime(record.get("time").toString());
@@ -131,14 +174,34 @@ public class SimpleSchemaRegistryAvroDeserializationSchema implements Deserializ
         receiptData.setUserGender(record.get("user_gender").toString());
         receiptData.setUserAge((Integer) record.get("user_age"));
         
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Successfully converted receipt for user {} (franchise: {})", 
+                     receiptData.getUserId(), receiptData.getFranchiseId());
+        }
+        
         return receiptData;
     }
     
+    /**
+     * =======================================================
+     * 스트림 종료 여부 확인
+     * =======================================================
+     * 
+     * @param nextElement 다음 요소
+     * @return 항상 false (무한 스트림)
+     */
     @Override
     public boolean isEndOfStream(ReceiptData nextElement) {
         return false;
     }
     
+    /**
+     * =======================================================
+     * 생성되는 타입 정보 반환
+     * =======================================================
+     * 
+     * @return ReceiptData 타입 정보
+     */
     @Override
     public TypeInformation<ReceiptData> getProducedType() {
         return TypeInformation.of(ReceiptData.class);

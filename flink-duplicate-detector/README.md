@@ -1,117 +1,192 @@
-# 중복 결제 탐지 애플리케이션 (Duplicate Payment Detector)
+# Duplicate Payment Detector
 
-실시간으로 영수증 데이터를 분석하여 동일 사용자의 반복 결제를 탐지하는 Apache Flink 기반 애플리케이션입니다.
+## 📋 프로젝트 개요
 
-## 주요 기능
+실시간으로 중복 결제를 탐지하는 Apache Flink 애플리케이션입니다. 동일 사용자가 짧은 시간 내에 여러 매장에서 결제하는 패턴을 감지하여 알림을 생성합니다.
 
-- Kafka에서 실시간 영수증 데이터 소비
-- 사용자별로 10초 이내 반복 결제 탐지
-- 중복 결제 감지 시 알람 생성
-- 알람을 Kafka 토픽으로 전송
-
-## 시스템 구조
+## 🏗️ 아키텍처
 
 ```
-[test-topic] → [Flink Application] → [duplicate-alert-topic]
-                      ↓
-               [필터링 및 그룹화]
-                      ↓
-               [10초 윈도우 처리]
-                      ↓
-               [중복 결제 탐지]
+Kafka (test-topic)
+      ↓ Avro 형식
+Receipt Data Source
+      ↓
+Receipt Validation & Filtering
+      ↓
+Key by User (name_gender_age)
+      ↓
+Time Window (10초)
+      ↓
+Duplicate Detection
+      ↓
+Kafka (payment_same_user) JSON 형식
 ```
 
-## 필요 환경
+## 📂 프로젝트 구조
 
-- Java 17+
-- Apache Kafka 3.x
-- Apache Flink 1.18.x
-- Gradle 8.x
-
-## 설치 및 실행
-
-### 1. 프로젝트 빌드
-
-```bash
-# 프로젝트 디렉토리로 이동
-cd duplicate-payment-detector
-
-# Gradle 빌드
-./gradlew build
+```
+src/main/java/com/kafka/duplicatedetector/
+├── DuplicatePaymentDetectorApp.java     # 메인 애플리케이션
+├── functions/                           # 데이터 처리 함수들
+│   ├── UserKeySelector.java            # 사용자 기반 키 선택자
+│   ├── ReceiptToFilteredMapper.java    # 데이터 필터링 매퍼
+│   └── DuplicateDetectionWindowFunction.java # 중복 탐지 윈도우 함수
+├── model/                               # 데이터 모델들
+│   ├── ReceiptData.java                 # 영수증 데이터
+│   ├── FilteredReceiptData.java         # 필터링된 영수증 데이터
+│   └── DuplicateAlert.java              # 중복 알림 데이터
+└── utils/                               # 유틸리티 클래스들
+    ├── AppProperties.java               # 설정 관리
+    ├── SimpleAvroDeserializationSchema.java  # Avro 역직렬화
+    └── DuplicateAlertJsonSerializationSchema.java # JSON 직렬화
 ```
 
-### 2. Kafka 토픽 생성
+## 🚨 중복 탐지 조건
 
-```bash
-# duplicate-alert-topic 생성
-kafka-topics.sh --create \
-    --topic duplicate-alert-topic \
-    --bootstrap-server localhost:9092 \
-    --partitions 3 \
-    --replication-factor 1
-```
+1. **동일 사용자**: 이름, 성별, 나이가 동일한 사용자
+2. **시간 윈도우**: 설정된 시간(기본 10초) 내에 발생
+3. **서로 다른 매장**: 2개 이상의 서로 다른 매장에서 결제
+4. **결제 건수**: 윈도우 내 2건 이상의 결제
 
-### 3. 애플리케이션 실행
+## ⚙️ 설정
 
-```bash
-# Flink 클러스터 모드
-flink run -c com.kafka.detector.DuplicatePaymentDetectorApp \
-    build/libs/duplicate-payment-detector-1.0.0.jar
-
-# 로컬 개발 모드
-./gradlew run
-```
-
-## 설정
-
-`src/main/resources/application.properties` 파일에서 설정을 변경할 수 있습니다.
-
+### application.properties
 ```properties
 # Kafka 설정
 kafka.bootstrap.servers=localhost:9092
 kafka.source.topic=test-topic
-kafka.sink.topic=duplicate-alert-topic
+kafka.sink.topic=payment_same_user
+kafka.consumer.group=duplicate-payment-detector
 
-# 윈도우 크기 (초)
+# Flink 설정
 flink.window.size.seconds=10
+flink.checkpoint.interval=60000
+
+# 애플리케이션 설정
+app.name=duplicate-payment-detector
+app.version=1.0.0
 ```
 
-## 데이터 형식
+## 🔄 데이터 플로우
 
-### 입력 데이터 (test-topic)
+### 입력 데이터 (Avro)
+- **토픽**: test-topic
+- **형식**: Confluent Schema Registry Avro
+- **구조**: 영수증 데이터 (사용자 정보, 매장 정보, 메뉴 정보, 결제 정보)
 
-영수증 데이터 (Avro 형식):
-- `user_id`, `user_name`, `user_gender`, `user_age`
-- `store_brand`, `store_name`
-- `time`
-- 기타 영수증 정보
+### 출력 데이터 (JSON)
+- **토픽**: payment_same_user
+- **형식**: JSON
+- **구조**: 중복 알림 (사용자 정보, 중복 매장 리스트, 알림 메시지, 탐지 시간)
 
-### 출력 데이터 (duplicate-alert-topic)
-
-중복 결제 알람 (JSON 형식):
+### 출력 예시
 ```json
 {
-  "userName": "홍길동",
-  "userGender": "M",
+  "userId": "12345",
+  "userName": "김철수",
+  "userGender": "남성",
   "userAge": 30,
-  "duplicateStores": ["스타벅스 강남점", "스타벅스 역삼점"],
-  "alertMessage": "결제자: 홍길동, 스타벅스 강남점, 스타벅스 역삼점 결제 이상 탐지",
-  "detectionTime": "2025-01-14 10:30:45"
+  "duplicateStores": [
+    "스타벅스 - 강남점",
+    "이디야 - 역삼점"
+  ],
+  "alertMessage": "결제자: 김철수 (12345), 의심스러운 결제가 탐지되었습니다: 스타벅스 - 강남점, 이디야 - 역삼점",
+  "detectionTime": "2025-05-22 15:30:45"
 }
 ```
 
-## 모니터링
+## 🚀 실행 방법
 
-로그는 다음 위치에서 확인할 수 있습니다:
-- 콘솔 출력
-- `duplicate-payment-detector.log` 파일
+### 1. 빌드
+```bash
+./gradlew build
+```
 
-## 주의사항
+### 2. Shadow JAR 생성
+```bash
+./gradlew shadowJar
+```
 
-- Kafka가 실행 중이어야 합니다
-- test-topic에 데이터가 들어와야 탐지가 시작됩니다
-- 메모리 설정은 처리량에 따라 조정이 필요할 수 있습니다
+### 3. 실행
+```bash
+java -jar build/libs/duplicate-payment-detector.jar
+```
 
-## 라이선스
+### 4. Gradle을 통한 실행
+```bash
+./gradlew run
+```
 
-이 프로젝트는 MIT 라이선스를 따릅니다.
+## 🔧 주요 기능
+
+### 1. 실시간 스트리밍 처리
+- Apache Flink를 사용한 실시간 데이터 처리
+- 체크포인트를 통한 장애 복구
+- At-Least-Once 의미론으로 데이터 손실 방지
+
+### 2. 윈도우 기반 분석
+- 시간 기반 윈도우 (Tumbling Window)
+- 사용자별 그룹화
+- 설정 가능한 윈도우 크기
+
+### 3. 스마트 중복 탐지
+- 동일 매장 내 여러 결제는 제외
+- 서로 다른 매장에서의 결제만 중복으로 판단
+- 사용자 정보 기반 정확한 식별
+
+### 4. 설정 기반 운영
+- properties 파일을 통한 중앙화된 설정 관리
+- 런타임 설정 변경 없이 재시작만으로 적용
+- 환경별 설정 분리 가능
+
+## 📊 모니터링 및 로깅
+
+### 로그 레벨
+- **INFO**: 일반적인 처리 상황
+- **DEBUG**: 상세한 처리 과정 (개발/디버깅용)
+- **WARN**: 중복 탐지 알림
+- **ERROR**: 오류 상황
+
+### 주요 메트릭스
+- 처리된 영수증 수
+- 탐지된 중복 결제 수
+- 윈도우 처리 시간
+- Kafka 처리량
+
+## 🛠️ 개발 환경
+
+- **Java**: 17+
+- **Apache Flink**: 1.18.0
+- **Kafka**: Compatible with Confluent Platform
+- **Build Tool**: Gradle 8.1.1
+- **Serialization**: Avro, JSON
+
+## 📝 변경 이력
+
+### v1.0.0 (2025-05-22)
+- 초기 버전 릴리스
+- sales-total-realtime 구조 기반 리팩토링
+- AppProperties를 통한 설정 관리 개선
+- 패키지 구조 정리 (com.kafka.duplicatedetector)
+- 상세한 로깅 및 문서화 추가
+
+## 🔍 트러블슈팅
+
+### 일반적인 문제들
+
+1. **Kafka 연결 실패**
+   - bootstrap.servers 설정 확인
+   - 네트워크 연결 상태 확인
+
+2. **Avro 역직렬화 실패**
+   - Schema Registry 연결 상태 확인
+   - 스키마 호환성 확인
+
+3. **중복 탐지 안됨**
+   - 윈도우 크기 설정 확인
+   - 사용자 키 생성 로직 검증
+
+4. **성능 이슈**
+   - 병렬도 조정
+   - 체크포인트 간격 조정
+   - Kafka 파티션 수 확인

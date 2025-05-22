@@ -4,7 +4,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
-group = 'com.kafka.detector'
+group = 'com.kafka.duplicatedetector'
 version = '1.0.0'
 sourceCompatibility = '17'
 
@@ -30,18 +30,12 @@ dependencies {
     implementation 'org.apache.flink:flink-streaming-java:1.18.0'
     implementation 'org.apache.flink:flink-clients:1.18.0'
     
-    // Flink Kafka Connector - Using newer version
+    // Flink Kafka Connector
     implementation 'org.apache.flink:flink-connector-kafka:3.0.2-1.18'
     
-    // Flink Avro
+    // Avro & Schema Registry
     implementation 'org.apache.flink:flink-avro:1.18.0'
     implementation 'org.apache.avro:avro:1.11.3'
-    
-    // Flink Avro Confluent Registry
-    implementation 'org.apache.flink:flink-avro-confluent-registry:1.18.0'
-    
-    // Confluent Kafka Avro Serializer for Schema Registry
-    implementation 'io.confluent:kafka-avro-serializer:7.5.1'
     
     // Jackson for JSON
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
@@ -57,13 +51,13 @@ dependencies {
 }
 
 application {
-    mainClass = 'com.kafka.detector.DuplicatePaymentDetectorApp'
+    mainClass = 'com.kafka.duplicatedetector.DuplicatePaymentDetectorApp'
 }
 
 // JAR build configuration
 jar {
     manifest {
-        attributes 'Main-Class': 'com.kafka.detector.DuplicatePaymentDetectorApp'
+        attributes 'Main-Class': 'com.kafka.duplicatedetector.DuplicatePaymentDetectorApp'
     }
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
@@ -73,8 +67,9 @@ jar {
 
 shadowJar {
     manifest {
-        attributes 'Main-Class': 'com.kafka.detector.DuplicatePaymentDetectorApp'
+        attributes 'Main-Class': 'com.kafka.duplicatedetector.DuplicatePaymentDetectorApp'
     }
+    configurations = [project.configurations.runtimeClasspath]
     mergeServiceFiles()
     append 'META-INF/spring.handlers'
     append 'META-INF/spring.schemas'
@@ -83,9 +78,10 @@ shadowJar {
         resource = 'reference.conf'
     }
     
-    relocate 'com.google.common', 'com.kafka.detector.shaded.com.google.common'
-    relocate 'com.google.gson', 'com.kafka.detector.shaded.com.google.gson'
+    relocate 'com.google.common', 'com.kafka.duplicatedetector.shaded.com.google.common'
+    relocate 'com.google.gson', 'com.kafka.duplicatedetector.shaded.com.google.gson'
     
     archiveClassifier.set('')
     archiveVersion.set('')
+    zip64 = true
 }
