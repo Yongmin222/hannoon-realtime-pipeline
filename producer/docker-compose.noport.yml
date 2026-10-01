@@ -1,0 +1,16 @@
+services:
+  kafka-purchase-producer:
+    build: 
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: kafka-purchase-producer
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      # 데이터 전송 설정 조절
+      - APP_SCHEDULER_FIXED_RATE=1000    # 전송 주기 (밀리초): 1000=1초, 5000=5초, 30000=30초
+      - APP_DATA_GENERATE_COUNT=1        # 한 번에 보낼 데이터 개수: 1, 5, 10, 100 등
+    volumes:
+      - ./logs:/app/logs
+      - ./Dummy_data.xlsx:/app/Dummy_data.xlsx:ro
+    # 포트 노출 없음 - Kafka Producer만 동작
