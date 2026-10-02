@@ -29,7 +29,7 @@
 
 | 폴더 | 역할 | 입력 → 출력 |
 |---|---|---|
-| [`producer`](./producer) | 더미 영수증 데이터를 주기적으로 생성해 Kafka로 전송 (Spring Boot, Docker) | Excel 더미 데이터 → `test-topic` |
+| [`producer`](./producer) | 더미 영수증 데이터를 주기적으로 생성해 Kafka로 전송 (Spring Boot) | Excel 더미 데이터 → `test-topic` |
 | [`flink-sales-total`](./flink-sales-total) | 프랜차이즈별 당일 누적 매출과 매장 수를 실시간 집계 (상태 기반 처리) | `test-topic` → `sales_total_realtime` |
 | [`flink-top-store`](./flink-top-store) | 프랜차이즈별 매출 상위 3개 매장 랭킹, 변동이 있을 때만 출력 | `test-topic` → `franchise-top-stores` |
 | [`flink-duplicate-detector`](./flink-duplicate-detector) | 같은 사용자가 10초 안에 서로 다른 매장에서 결제하면 중복 결제로 탐지 (Tumbling Window) | `test-topic` → `payment_same_user` |
@@ -44,7 +44,7 @@
 | 스트림 처리 | Apache Flink 1.18 (3개 병렬 Job), 체크포인트 기반 장애 복구 |
 | 데이터 포맷 | Avro + Schema Registry, 출력은 JSON |
 | 백엔드 | Spring Boot (Producer) |
-| 빌드 / 실행 | Gradle, Java 17, Docker Compose |
+| 빌드 / 실행 | Gradle, Java 17 |
 | 인프라 | AWS EC2 (11개 인스턴스) |
 
 ## 주요 성과
@@ -63,7 +63,7 @@
 ```bash
 # 1. 데이터 생성 (producer)
 cd producer
-docker compose -f docker-compose.noport.yml up -d --build
+./gradlew bootRun
 
 # 2. Flink 애플리케이션 (원하는 것을 각각 실행)
 cd flink-sales-total          # 또는 flink-top-store, flink-duplicate-detector
