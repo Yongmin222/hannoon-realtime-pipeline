@@ -1,33 +1,40 @@
-# Kafka Purchase Data Producer
+# Producer
 
-간단한 Kafka 구매 데이터 프로듀서입니다.
+`Dummy_data.xlsx`의 매장·메뉴 데이터를 랜덤으로 조합해 영수증 데이터(Avro)를 만들고, 일정 주기로 Kafka 토픽에 전송하는 프로듀서입니다.
 
-## 🚀 사용법
+## 구성
 
-### 실행
+- Java 17, Spring Boot 3.2, Spring Kafka
+- Avro 직렬화 + Confluent Schema Registry
+- 전송 토픽: `test-topic`
+
+## 실행 전 준비
+
+1. Kafka 브로커와 Schema Registry를 먼저 띄웁니다.
+2. `src/main/resources/application.properties`에서 주소를 본인 환경에 맞게 수정합니다.
+   - `spring.kafka.bootstrap-servers` (기본 `localhost:9092`)
+   - `kafka.schema-registry-url` (기본 `http://localhost:8081`)
+
+## 실행
+
+IntelliJ에서 `Test1Application`을 실행하거나, `producer` 폴더에서 아래 명령을 실행합니다.
+
 ```bash
-docker compose -f docker-compose.noport.yml up -d --build
+./gradlew bootRun
 ```
 
-### 설정 변경
-`docker-compose.noport.yml` 파일에서 이 두 값만 수정:
-```yaml
-- APP_SCHEDULER_FIXED_RATE=1000    # 전송 주기 (밀리초)
-- APP_DATA_GENERATE_COUNT=1        # 한 번에 보낼 개수
-```
+`Dummy_data.xlsx`는 실행 위치(`producer` 폴더) 기준 상대 경로로 읽습니다.
 
-### 재시작
-```bash
-docker compose -f docker-compose.noport.yml down
-docker compose -f docker-compose.noport.yml up -d --build
-```
+## 설정
 
-### 로그 확인
-```bash
-docker logs -f kafka-purchase-producer
-```
+`application.properties`에서 수정합니다.
 
-## 📋 설정 예시
-- `1000, 1` = 1초마다 1개 (실시간)
-- `5000, 10` = 5초마다 10개 (개발용)  
-- `1000, 100` = 1초마다 100개 (부하테스트)
+| 설정 | 설명 | 기본값 |
+|---|---|---|
+| `app.scheduler.fixed-rate` | 전송 주기 (ms) | 1000 |
+| `app.data.generate-count` | 한 번에 보낼 건수 | 1 |
+| `app.data.excel-path` | 원본 엑셀 경로 | `./Dummy_data.xlsx` |
+
+## 참고
+
+원래 AWS EC2 서버에서 Kafka 클러스터를 구성해 운영했고, 저장소에는 로컬 주소로 바꿔 올렸습니다.
